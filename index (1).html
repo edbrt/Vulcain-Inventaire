@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventaire — Gestion de Stock</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--bg2:#171b26;--bg3:#1e2333;--border:rgba(255,255,255,0.07);
+  --text:#e8eaf0;--muted:#6b7280;--accent:#4f8ef7;--danger:#f87171;
+  --warn:#fbbf24;--ok:#34d399;--sell:#a78bfa;--radius:12px;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh}
+
+/* NAV */
+nav{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.nav-logo{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.nav-logo span{width:28px;height:28px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.nav-tabs{display:flex;gap:4px}
+.nav-tab{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s;font-family:var(--font)}
+.nav-tab:hover{background:var(--bg3);color:var(--text)}
+.nav-tab.active{background:var(--bg3);color:var(--text)}
+.nav-right{display:flex;align-items:center;gap:10px}
+.btn{padding:7px 14px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--font)}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#3a7be8}
+.btn-ghost{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.btn-ghost:hover{border-color:rgba(255,255,255,.15)}
+.btn-danger{background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.2)}.btn-danger:hover{background:rgba(248,113,113,.25)}
+.btn-green{background:rgba(52,211,153,.15);color:var(--ok);border:1px solid rgba(52,211,153,.2)}.btn-green:hover{background:rgba(52,211,153,.25)}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+main{max-width:1280px;margin:0 auto;padding:2rem}
+
+/* CONFIG BANNER */
+#config-banner{background:linear-gradient(135deg,rgba(79,142,247,.15),rgba(52,211,153,.1));border:1px solid rgba(79,142,247,.3);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem}
+#config-banner .icon{font-size:22px}
+#config-banner p{font-size:13px;color:var(--muted);flex:1;line-height:1.6}
+#config-banner p strong{color:var(--text)}
+#config-banner input{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--text);font-family:var(--mono);width:340px}
+#config-banner input:focus{outline:none;border-color:var(--accent)}
+
+.page{display:none}.page.active{display:block}
+
+/* DASHBOARD */
+.dash-header{margin-bottom:1.5rem}
+.dash-header h2{font-size:22px;font-weight:600;margin-bottom:4px}
+.dash-header p{font-size:13px;color:var(--muted)}
+.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem}
+.price-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;position:relative;overflow:hidden}
+.price-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.price-card.achat::before{background:linear-gradient(90deg,var(--accent),#60a5fa)}
+.price-card.vente::before{background:linear-gradient(90deg,var(--sell),#c084fc)}
+.price-card .lbl{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+.price-card .amount{font-size:36px;font-weight:600;font-family:var(--mono);letter-spacing:-1px}
+.price-card.achat .amount{color:var(--accent)}
+.price-card.vente .amount{color:var(--sell)}
+.price-card .sublbl{font-size:12px;color:var(--muted);margin-top:.5rem}
+.margin-badge{position:absolute;top:1.5rem;right:1.5rem;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.2);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--ok);font-weight:500}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem}
+.stat-card .lbl{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.stat-card .val{font-size:24px;font-weight:600}
+.stat-card .val.ok{color:var(--ok)}.stat-card .val.warn{color:var(--warn)}.stat-card .val.danger{color:var(--danger)}
+.section-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.75rem}
+.alerts-section{margin-bottom:1.5rem}
+.alert-item{display:flex;align-items:center;gap:12px;background:var(--bg2);border-radius:8px;padding:.75rem 1rem;margin-bottom:6px;border-left:3px solid}
+.alert-item.danger{border-color:var(--danger)}.alert-item.warn{border-color:var(--warn)}
+.alert-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.alert-item.danger .dot{background:var(--danger)}.alert-item.warn .dot{background:var(--warn)}
+.alert-item .info{flex:1}
+.alert-item .info .name{font-size:13px;font-weight:500}
+.alert-item .info .detail{font-size:12px;color:var(--muted);margin-top:2px}
+.badge{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:500}
+.badge-danger{background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.2)}
+.badge-warn{background:rgba(251,191,36,.15);color:var(--warn);border:1px solid rgba(251,191,36,.2)}
+.badge-ok{background:rgba(52,211,153,.12);color:var(--ok);border:1px solid rgba(52,211,153,.2)}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
+.cat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.2rem}
+.cat-card .cat-name{font-size:13px;font-weight:600;margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
+.cat-card .cat-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.cat-card .cat-row .key{color:var(--muted)}
+.cat-card .cat-row .val{font-weight:500;font-family:var(--mono);font-size:11px}
+.cat-card .cat-row .val.blue{color:var(--accent)}.cat-card .cat-row .val.purple{color:var(--sell)}
+.cat-divider{height:1px;background:var(--border);margin:.6rem 0}
+
+/* STOCK TABLE */
+.stock-toolbar{display:flex;gap:10px;margin-bottom:1.25rem;align-items:center;flex-wrap:wrap}
+.search-wrap{position:relative;flex:1;min-width:200px}
+.search-wrap input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px 8px 36px;font-size:13px;color:var(--text);font-family:var(--font)}
+.search-wrap input:focus{outline:none;border-color:var(--accent)}
+.search-wrap::before{content:'🔍';position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:13px}
+.filter-select{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);cursor:pointer;font-family:var(--font)}
+.filter-select:focus{outline:none;border-color:var(--accent)}
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{text-align:left;padding:.85rem 1rem;font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg3)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg3)}
+tbody td{padding:.8rem 1rem;font-size:13px}
+tbody td.mono{font-family:var(--mono);font-size:12px}
+tbody td .name{font-weight:500}
+tbody td .cat-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:20px;background:var(--bg3);border:1px solid var(--border);color:var(--muted);margin-top:3px}
+.status-dot{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500}
+.empty{text-align:center;padding:3rem;color:var(--muted)}
+.empty .icon{font-size:40px;margin-bottom:1rem}
+
+/* RECETTES PAGE */
+.recette-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.recette-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;cursor:pointer;transition:border-color .15s}
+.recette-card:hover{border-color:rgba(255,255,255,.15)}
+.recette-card .rc-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1rem}
+.recette-card .rc-name{font-size:15px;font-weight:600}
+.recette-card .rc-qty{font-size:12px;color:var(--muted);margin-top:3px}
+.recette-card .rc-cost{text-align:right}
+.recette-card .rc-cost .cost-val{font-size:18px;font-weight:600;font-family:var(--mono);color:var(--accent)}
+.recette-card .rc-cost .cost-lbl{font-size:11px;color:var(--muted)}
+.ingredient-list{display:flex;flex-direction:column;gap:6px;margin-bottom:1rem}
+.ingredient-row{display:flex;justify-content:space-between;align-items:center;background:var(--bg3);border-radius:6px;padding:6px 10px;font-size:12px}
+.ingredient-row .ing-name{color:var(--text);font-weight:500}
+.ingredient-row .ing-qty{color:var(--muted)}
+.ingredient-row .ing-cost{color:var(--accent);font-family:var(--mono);font-size:11px}
+.rc-footer{display:flex;justify-content:space-between;align-items:center;padding-top:.75rem;border-top:1px solid var(--border)}
+.rc-stock-info{font-size:12px;color:var(--muted)}
+.produce-btn{display:flex;align-items:center;gap:8px}
+.produce-btn input{width:60px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:13px;color:var(--text);text-align:center;font-family:var(--mono)}
+.produce-btn input:focus{outline:none;border-color:var(--ok)}
+.no-recette{background:var(--bg2);border:1px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;color:var(--muted);font-size:13px}
+.no-recette .nr-icon{font-size:32px;margin-bottom:.75rem}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:600px;max-width:95vw;max-height:92vh;overflow-y:auto;transform:translateY(10px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg2);z-index:1}
+.modal-header h3{font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.modal-close:hover{background:var(--bg3);color:var(--text)}
+.modal-body{padding:1.5rem}
+.modal-footer{padding:1rem 1.5rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:var(--bg2)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12px;font-weight:500;color:var(--muted)}
+.form-group input,.form-group select,.form-group textarea{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font);transition:border-color .15s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--accent)}
+.form-group textarea{resize:vertical;min-height:70px}
+.form-group select option{background:var(--bg2)}
+
+/* RECETTE EDITOR dans modal */
+.recette-section{margin-top:1.5rem;padding-top:1.5rem;border-top:1px solid var(--border)}
+.recette-section-title{font-size:13px;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.recette-section-title .badge-new{font-size:11px;background:rgba(167,139,250,.15);color:var(--sell);border:1px solid rgba(167,139,250,.2);border-radius:20px;padding:2px 8px}
+.ing-editor-row{display:grid;grid-template-columns:1fr 80px 80px 28px;gap:8px;align-items:center;margin-bottom:8px}
+.ing-editor-row input,.ing-editor-row select{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--text);font-family:var(--font)}
+.ing-editor-row input:focus,.ing-editor-row select:focus{outline:none;border-color:var(--accent)}
+.ing-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;border-radius:4px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+.ing-remove:hover{background:var(--bg3);color:var(--danger)}
+.recette-produces{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem}
+.recette-cost-preview{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;font-size:13px;display:flex;justify-content:space-between;align-items:center}
+.recette-cost-preview .rcp-val{font-family:var(--mono);font-weight:600;color:var(--accent)}
+
+/* MODAL PRODUIRE */
+.produce-modal .modal{width:480px}
+.produce-summary{background:var(--bg3);border-radius:8px;padding:1rem;margin-bottom:1rem}
+.produce-summary .ps-row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+.produce-summary .ps-row:last-child{margin-bottom:0}
+.produce-summary .ps-row .key{color:var(--muted)}
+.produce-summary .ps-row .val{font-weight:500;font-family:var(--mono);font-size:12px}
+.produce-summary .ps-row .val.danger{color:var(--danger)}
+.produce-qty-wrap{display:flex;align-items:center;gap:12px;margin-bottom:1rem}
+.produce-qty-wrap label{font-size:13px;font-weight:500;flex:1}
+.produce-qty-wrap input{width:80px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--text);text-align:center;font-family:var(--mono)}
+.produce-qty-wrap input:focus{outline:none;border-color:var(--ok)}
+.impact-list{margin-bottom:1rem}
+.impact-title{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.impact-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)}
+.impact-row:last-child{border-bottom:none}
+.impact-row .ir-name{color:var(--text)}
+.impact-row .ir-change{color:var(--danger);font-family:var(--mono)}
+.impact-row .ir-after{color:var(--muted);font-family:var(--mono);font-size:11px}
+.impact-row .ir-after.warn{color:var(--warn)}.impact-row .ir-after.danger{color:var(--danger)}
+
+/* SYNC */
+.sync-status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.sync-dot.loading{background:var(--warn);animation:pulse 1s infinite}
+.sync-dot.error{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+@media(max-width:768px){
+  .price-grid,.stats-grid,.cat-grid,.recette-grid{grid-template-columns:1fr}
+  main{padding:1rem}
+  nav{padding:0 1rem}
+  .nav-tabs{display:none}
+  #config-banner{flex-direction:column;align-items:flex-start}
+  #config-banner input{width:100%}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><span>📦</span> StockManager</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('dashboard',this)">Tableau de bord</button>
+    <button class="nav-tab" onclick="showPage('stock',this)">Stock</button>
+    <button class="nav-tab" onclick="showPage('recettes',this)">🧪 Recettes</button>
+  </div>
+  <div class="nav-right">
+    <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-label">Prêt</span></div>
+    <button class="btn btn-primary" onclick="openProductModal()">+ Ajouter</button>
+  </div>
+</nav>
+
+<main>
+<div id="config-banner">
+  <div class="icon">⚙️</div>
+  <p><strong>Configuration Google Sheets</strong><br>Collez l'URL de déploiement Apps Script pour synchroniser les données en temps réel.</p>
+  <input type="text" id="sheet-url-input" placeholder="https://script.google.com/macros/s/.../exec" oninput="saveConfig()">
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="dash-header">
+    <h2>Tableau de bord</h2>
+    <p id="dash-date"></p>
+  </div>
+  <div class="price-grid">
+    <div class="price-card achat">
+      <div class="lbl">💰 Valeur totale du stock (prix achat)</div>
+      <div class="amount" id="total-achat">0,00 €</div>
+      <div class="sublbl">Ce que vous avez investi dans votre stock actuel</div>
+    </div>
+    <div class="price-card vente">
+      <div class="lbl">💵 Valeur totale au prix de vente</div>
+      <div class="amount" id="total-vente">0,00 €</div>
+      <div class="sublbl">Ce que vous toucheriez en vendant tout le stock</div>
+      <div class="margin-badge" id="margin-pct">+0%</div>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card"><div class="lbl">Total références</div><div class="val" id="stat-total">0</div></div>
+    <div class="stat-card"><div class="lbl">🟢 En stock</div><div class="val ok" id="stat-ok">0</div></div>
+    <div class="stat-card"><div class="lbl">🟡 Stock bas</div><div class="val warn" id="stat-warn">0</div></div>
+    <div class="stat-card"><div class="lbl">🔴 Critique</div><div class="val danger" id="stat-danger">0</div></div>
+  </div>
+  <div class="alerts-section" id="alerts-section"></div>
+  <p class="section-title">Résumé par catégorie</p>
+  <div class="cat-grid" id="cat-grid"></div>
+</div>
+
+<!-- STOCK -->
+<div class="page" id="page-stock">
+  <div class="stock-toolbar">
+    <div class="search-wrap"><input type="text" id="search-input" placeholder="Rechercher un produit..." oninput="renderStock()"></div>
+    <select class="filter-select" id="cat-filter" onchange="renderStock()">
+      <option value="">Toutes les catégories</option>
+      <option>Matières premières</option><option>Boissons</option><option>Emballages</option>
+      <option>Produits finis</option><option>Revente directe</option>
+    </select>
+    <select class="filter-select" id="status-filter" onchange="renderStock()">
+      <option value="">Tous les statuts</option>
+      <option value="ok">🟢 OK</option><option value="warn">🟡 Bas</option><option value="danger">🔴 Critique</option>
+    </select>
+    <button class="btn btn-ghost" onclick="syncData()">🔄 Actualiser</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>Produit</th><th>Quantité</th><th>Min / Max</th><th>Statut</th>
+        <th>Coût achat</th><th>Prix vente</th><th>Valeur stock</th><th>Fournisseur</th><th>Mise à jour</th><th></th>
+      </tr></thead>
+      <tbody id="stock-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- RECETTES -->
+<div class="page" id="page-recettes">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+    <div>
+      <h2 style="font-size:18px;font-weight:600;margin-bottom:4px">Recettes & Produits finis</h2>
+      <p style="font-size:13px;color:var(--muted)">Définissez la composition de vos produits finis. Le coût de revient est calculé automatiquement.</p>
+    </div>
+  </div>
+  <div class="recette-grid" id="recette-grid"></div>
+</div>
+</main>
+
+<!-- MODAL PRODUIT -->
+<div class="modal-overlay" id="modal-product" onclick="closeModalOutside(event,'modal-product')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-product-title">Ajouter un produit</h3>
+      <button class="modal-close" onclick="closeModal('modal-product')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Nom du produit *</label><input type="text" id="f-nom" placeholder="Ex: Pâte à crêpe 1L"></div>
+        <div class="form-group"><label>Catégorie *</label>
+          <select id="f-cat" onchange="toggleRecetteSection()">
+            <option value="">Choisir...</option>
+            <option>Matières premières</option><option>Boissons</option><option>Emballages</option>
+            <option>Produits finis</option><option>Revente directe</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Unité</label>
+          <select id="f-unite">
+            <option>kg</option><option>g</option><option>L</option><option>mL</option>
+            <option>unité(s)</option><option>carton(s)</option><option>sachet(s)</option><option>bouteille(s)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Quantité actuelle *</label><input type="number" id="f-qty" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group"><label>Stock minimum</label><input type="number" id="f-min" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group"><label>Stock maximum</label><input type="number" id="f-max" placeholder="0" min="0" step="0.01"></div>
+        <div class="form-group" id="f-achat-group"><label>Prix d'achat (€/unité)</label><input type="number" id="f-achat" placeholder="0.00" min="0" step="0.01" oninput="updateCostPreview()"></div>
+        <div class="form-group"><label>Prix de vente (€/unité)</label><input type="number" id="f-vente" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="form-group full"><label>Fournisseur</label><input type="text" id="f-fournisseur" placeholder="Ex: Dupont & Fils"></div>
+        <div class="form-group full"><label>Notes</label><textarea id="f-notes" placeholder="Informations complémentaires..."></textarea></div>
+      </div>
+
+      <!-- SECTION RECETTE (produits finis uniquement) -->
+      <div class="recette-section" id="recette-section" style="display:none">
+        <div class="recette-section-title">🧪 Composition du produit <span class="badge-new">Produit fini</span></div>
+        <div class="recette-produces">
+          <div class="form-group"><label>Cette recette produit</label><input type="number" id="f-rec-qty" placeholder="1" min="0.01" step="0.01" oninput="updateCostPreview()"></div>
+          <div class="form-group"><label>Unité produite</label>
+            <select id="f-rec-unite">
+              <option>L</option><option>kg</option><option>g</option><option>mL</option><option>unité(s)</option><option>portion(s)</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="display:grid;grid-template-columns:1fr 80px 80px 28px;gap:8px;margin-bottom:6px">
+            <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Ingrédient</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Quantité</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Unité</span>
+            <span></span>
+          </div>
+          <div id="ing-editor"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addIngredientRow()" style="margin-bottom:1rem">+ Ajouter un ingrédient</button>
+        <div class="recette-cost-preview" id="cost-preview">
+          <span style="color:var(--muted);font-size:13px">Coût de revient estimé</span>
+          <span class="rcp-val" id="rcp-val">— €</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-product')">Annuler</button>
+      <button class="btn btn-danger" id="btn-delete" onclick="deleteProduct()" style="display:none">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PRODUIRE -->
+<div class="modal-overlay produce-modal" id="modal-produce" onclick="closeModalOutside(event,'modal-produce')">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-produce-title">Produire</h3>
+      <button class="modal-close" onclick="closeModal('modal-produce')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="produce-qty-wrap">
+        <label>Quantité à produire</label>
+        <input type="number" id="produce-qty" value="1" min="1" step="1" oninput="updateProduceImpact()">
+        <span id="produce-unit" style="font-size:13px;color:var(--muted)">unité(s)</span>
+      </div>
+      <div class="produce-summary" id="produce-summary"></div>
+      <div class="impact-list">
+        <div class="impact-title">Ingrédients consommés</div>
+        <div id="impact-rows"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-produce')">Annuler</button>
+      <button class="btn btn-green" onclick="confirmProduce()">✅ Confirmer la production</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════
+const CAT_ICONS={'Matières premières':'🌾','Boissons':'🥤','Emballages':'📦','Produits finis':'🏭','Revente directe':'🛍️'};
+let APPS_SCRIPT_URL = localStorage.getItem('apps_script_url')||'';
+
+let products = JSON.parse(localStorage.getItem('products')||'null') || [
+  {id:1,nom:'Farine de blé T55',cat:'Matières premières',unite:'kg',qty:850,min:200,max:1200,achat:0.85,vente:0,fournisseur:'Moulin Dupont',notes:'',updated:'19/05/2026',recette:null},
+  {id:2,nom:'Sucre blanc',cat:'Matières premières',unite:'kg',qty:95,min:100,max:500,achat:1.20,vente:0,fournisseur:'Cristal Union',notes:'Commander urgent',updated:'19/05/2026',recette:null},
+  {id:3,nom:'Huile de tournesol',cat:'Matières premières',unite:'L',qty:18,min:50,max:300,achat:2.30,vente:0,fournisseur:'Lesieur',notes:'',updated:'18/05/2026',recette:null},
+  {id:4,nom:'Œufs frais',cat:'Matières premières',unite:'unité(s)',qty:120,min:30,max:300,achat:0.22,vente:0,fournisseur:'Ferme Martin',notes:'',updated:'19/05/2026',recette:null},
+  {id:5,nom:'Lait entier',cat:'Matières premières',unite:'L',qty:40,min:20,max:100,achat:0.95,vente:0,fournisseur:'Lactalis',notes:'',updated:'19/05/2026',recette:null},
+  {id:6,nom:'Eau minérale 50cL',cat:'Boissons',unite:'bouteille(s)',qty:240,min:100,max:600,achat:0.25,vente:1.50,fournisseur:'Evian',notes:'',updated:'19/05/2026',recette:null},
+  {id:7,nom:'Boîte carton 30x20',cat:'Emballages',unite:'unité(s)',qty:500,min:200,max:1000,achat:0.45,vente:0,fournisseur:'PackPro',notes:'',updated:'16/05/2026',recette:null},
+  {id:8,nom:'Barre chocolatée',cat:'Revente directe',unite:'unité(s)',qty:144,min:60,max:300,achat:0.60,vente:1.50,fournisseur:'Nestlé',notes:'',updated:'19/05/2026',recette:null},
+  {id:9,nom:'Pâte à crêpe 1L',cat:'Produits finis',unite:'L',qty:12,min:5,max:50,achat:0,vente:4.50,fournisseur:'',notes:'Recette maison',updated:'19/05/2026',
+    recette:{produit_qty:1,produit_unite:'L',ingredients:[
+      {product_id:1,qty:0.25,unite:'kg'},
+      {product_id:4,qty:2,unite:'unité(s)'},
+      {product_id:5,qty:0.5,unite:'L'},
+    ]}
+  },
+];
+
+let editingId = null;
+let producingId = null;
+let nextId = Math.max(...products.map(p=>p.id))+1;
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function status(p){
+  if(!p.min&&!p.max)return'ok';
+  if(p.qty<=p.min)return'danger';
+  if(p.max&&p.qty/p.max<0.25)return'warn';
+  return'ok';
+}
+function fmt(n){return(+n).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}
+function today(){return new Date().toLocaleDateString('fr-FR')}
+function saveLocal(){localStorage.setItem('products',JSON.stringify(products))}
+function saveConfig(){APPS_SCRIPT_URL=document.getElementById('sheet-url-input').value.trim();localStorage.setItem('apps_script_url',APPS_SCRIPT_URL)}
+
+// Coût de revient d'un produit fini (recette → prix achat calculé)
+function computeCost(p){
+  if(!p.recette||!p.recette.ingredients||p.recette.ingredients.length===0)return p.achat||0;
+  let total=0;
+  p.recette.ingredients.forEach(ing=>{
+    const mp=products.find(x=>x.id===ing.product_id);
+    if(mp)total+=ing.qty*(mp.achat||0);
+  });
+  const produces=p.recette.produit_qty||1;
+  return total/produces;
+}
+
+function getAchat(p){
+  return p.cat==='Produits finis'&&p.recette ? computeCost(p) : (p.achat||0);
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function showPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(name==='stock')renderStock();
+  if(name==='dashboard')renderDashboard();
+  if(name==='recettes')renderRecettes();
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard(){
+  document.getElementById('dash-date').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  let totalAchat=0,totalVente=0,ok=0,warn=0,danger=0;
+  products.forEach(p=>{
+    const a=getAchat(p);
+    totalAchat+=p.qty*a;
+    totalVente+=p.qty*(p.vente||a);
+    const s=status(p);
+    if(s==='ok')ok++;else if(s==='warn')warn++;else danger++;
+  });
+  document.getElementById('total-achat').textContent=fmt(totalAchat);
+  document.getElementById('total-vente').textContent=fmt(totalVente);
+  document.getElementById('stat-total').textContent=products.length;
+  document.getElementById('stat-ok').textContent=ok;
+  document.getElementById('stat-warn').textContent=warn;
+  document.getElementById('stat-danger').textContent=danger;
+  const margin=totalAchat>0?((totalVente-totalAchat)/totalAchat*100):0;
+  document.getElementById('margin-pct').textContent=(margin>=0?'+':'')+margin.toFixed(1)+'% marge';
+
+  // Alertes
+  const alertSection=document.getElementById('alerts-section');
+  const critical=products.filter(p=>status(p)==='danger');
+  const low=products.filter(p=>status(p)==='warn');
+  if(!critical.length&&!low.length){alertSection.innerHTML='';return;}
+  let html=`<p class="section-title">⚠️ Alertes (${critical.length+low.length})</p>`;
+  [...critical,...low].forEach(p=>{
+    const s=status(p);
+    html+=`<div class="alert-item ${s}"><div class="dot"></div><div class="info"><div class="name">${p.nom}</div><div class="detail">${CAT_ICONS[p.cat]||''} ${p.cat} · ${p.qty} ${p.unite} restants (min. ${p.min} ${p.unite})</div></div><span class="badge badge-${s}">${s==='danger'?'🔴 Critique':'🟡 Stock bas'}</span></div>`;
+  });
+  alertSection.innerHTML=html;
+
+  // Catégories
+  const cats={};
+  products.forEach(p=>{
+    if(!cats[p.cat])cats[p.cat]={count:0,achat:0,vente:0,alerts:0};
+    cats[p.cat].count++;
+    const a=getAchat(p);
+    cats[p.cat].achat+=p.qty*a;
+    cats[p.cat].vente+=p.qty*(p.vente||a);
+    if(status(p)!=='ok')cats[p.cat].alerts++;
+  });
+  document.getElementById('cat-grid').innerHTML=Object.entries(cats).map(([name,data])=>`
+    <div class="cat-card">
+      <div class="cat-name"><span>${CAT_ICONS[name]||'📦'}</span>${name}</div>
+      <div class="cat-row"><span class="key">Références</span><span class="val">${data.count}</span></div>
+      <div class="cat-divider"></div>
+      <div class="cat-row"><span class="key">Valeur achat</span><span class="val blue">${fmt(data.achat)}</span></div>
+      <div class="cat-row"><span class="key">Valeur vente</span><span class="val purple">${fmt(data.vente)}</span></div>
+      ${data.alerts?`<div class="cat-divider"></div><div class="cat-row"><span class="key">Alertes</span><span class="val" style="color:var(--warn)">${data.alerts} article${data.alerts>1?'s':''}</span></div>`:''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// STOCK TABLE
+// ═══════════════════════════════════════
+function renderStock(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const catF=document.getElementById('cat-filter').value;
+  const statF=document.getElementById('status-filter').value;
+  const filtered=products.filter(p=>{
+    const mQ=!q||p.nom.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q)||(p.fournisseur||'').toLowerCase().includes(q);
+    return mQ&&(!catF||p.cat===catF)&&(!statF||status(p)===statF);
+  });
+  const sHTML={ok:'<span class="status-dot"><span style="color:var(--ok)">●</span> OK</span>',warn:'<span class="status-dot"><span style="color:var(--warn)">●</span> Bas</span>',danger:'<span class="status-dot"><span style="color:var(--danger)">●</span> Critique</span>'};
+  const tbody=document.getElementById('stock-tbody');
+  if(!filtered.length){tbody.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="icon">🔍</div><p>Aucun produit trouvé</p></div></td></tr>`;return;}
+  tbody.innerHTML=filtered.map(p=>{
+    const s=status(p);
+    const a=getAchat(p);
+    const isCalc=p.cat==='Produits finis'&&p.recette;
+    return`<tr onclick="openProductModal(${p.id})">
+      <td><div class="name">${p.nom}</div><div class="cat-tag">${CAT_ICONS[p.cat]||''} ${p.cat}</div></td>
+      <td class="mono">${p.qty} ${p.unite}</td>
+      <td class="mono" style="color:var(--muted)">${p.min||'—'} / ${p.max||'—'}</td>
+      <td>${sHTML[s]}</td>
+      <td class="mono" style="color:var(--accent)">${a?fmt(a):'—'}${isCalc?' <span style="font-size:10px;color:var(--muted)">(calculé)</span>':''}</td>
+      <td class="mono" style="color:var(--sell)">${p.vente?fmt(p.vente):'—'}</td>
+      <td class="mono">${fmt(p.qty*a)}</td>
+      <td style="color:var(--muted);font-size:12px">${p.fournisseur||'—'}</td>
+      <td style="color:var(--muted);font-size:12px">${p.updated||'—'}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openProductModal(${p.id})">✏️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// RECETTES PAGE
+// ═══════════════════════════════════════
+function renderRecettes(){
+  const prodFinis=products.filter(p=>p.cat==='Produits finis');
+  const grid=document.getElementById('recette-grid');
+  if(!prodFinis.length){
+    grid.innerHTML=`<div class="no-recette" style="grid-column:1/-1"><div class="nr-icon">🏭</div><p>Aucun produit fini.<br>Ajoutez un produit dans la catégorie "Produits finis" pour définir sa recette.</p></div>`;
+    return;
+  }
+  grid.innerHTML=prodFinis.map(p=>{
+    const rec=p.recette;
+    const cost=computeCost(p);
+    const hasIng=rec&&rec.ingredients&&rec.ingredients.length>0;
+    const ingHTML=hasIng?rec.ingredients.map(ing=>{
+      const mp=products.find(x=>x.id===ing.product_id);
+      if(!mp)return'';
+      const ingCost=ing.qty*(mp.achat||0);
+      return`<div class="ingredient-row">
+        <span class="ing-name">${mp.nom}</span>
+        <span class="ing-qty">${ing.qty} ${ing.unite}</span>
+        <span class="ing-cost">${fmt(ingCost)}</span>
+      </div>`;
+    }).join(''):'<p style="font-size:12px;color:var(--muted);padding:8px 0">Aucun ingrédient défini. Cliquez pour ajouter.</p>';
+
+    return`<div class="recette-card" onclick="openProductModal(${p.id})">
+      <div class="rc-header">
+        <div>
+          <div class="rc-name">${p.nom}</div>
+          <div class="rc-qty">Produit : ${rec?rec.produit_qty+' '+rec.produit_unite:'—'} par recette</div>
+        </div>
+        <div class="rc-cost">
+          <div class="cost-val">${cost?fmt(cost):'— €'}</div>
+          <div class="cost-lbl">coût de revient</div>
+        </div>
+      </div>
+      <div class="ingredient-list">${ingHTML}</div>
+      <div class="rc-footer">
+        <span class="rc-stock-info">Stock : <strong>${p.qty} ${p.unite}</strong></span>
+        <div class="produce-btn" onclick="event.stopPropagation()">
+          <input type="number" id="produce-input-${p.id}" value="1" min="1" step="1" placeholder="Qté">
+          <button class="btn btn-green btn-sm" onclick="openProduceModal(${p.id})">▶ Produire</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════
+// MODAL PRODUIT
+// ═══════════════════════════════════════
+function openProductModal(id){
+  const p=id?products.find(x=>x.id===id):null;
+  editingId=p?p.id:null;
+  document.getElementById('modal-product-title').textContent=p?'Modifier le produit':'Ajouter un produit';
+  document.getElementById('btn-delete').style.display=p?'block':'none';
+  document.getElementById('f-nom').value=p?.nom||'';
+  document.getElementById('f-cat').value=p?.cat||'';
+  document.getElementById('f-unite').value=p?.unite||'kg';
+  document.getElementById('f-qty').value=p?.qty??'';
+  document.getElementById('f-min').value=p?.min??'';
+  document.getElementById('f-max').value=p?.max??'';
+  document.getElementById('f-achat').value=p?.achat??'';
+  document.getElementById('f-vente').value=p?.vente??'';
+  document.getElementById('f-fournisseur').value=p?.fournisseur||'';
+  document.getElementById('f-notes').value=p?.notes||'';
+
+  // Recette
+  const rec=p?.recette||null;
+  document.getElementById('f-rec-qty').value=rec?.produit_qty||1;
+  document.getElementById('f-rec-unite').value=rec?.produit_unite||'L';
+  document.getElementById('ing-editor').innerHTML='';
+  if(rec?.ingredients){rec.ingredients.forEach(ing=>addIngredientRow(ing));}
+
+  toggleRecetteSection();
+  updateCostPreview();
+  openModal('modal-product');
+  setTimeout(()=>document.getElementById('f-nom').focus(),100);
+}
+
+function toggleRecetteSection(){
+  const cat=document.getElementById('f-cat').value;
+  const show=cat==='Produits finis';
+  document.getElementById('recette-section').style.display=show?'block':'none';
+  document.getElementById('f-achat-group').style.display=show?'none':'flex';
+  updateCostPreview();
+}
+
+// Ingrédients editor
+function addIngredientRow(ing=null){
+  const mpOptions=products.filter(p=>p.cat==='Matières premières').map(p=>`<option value="${p.id}" ${ing&&ing.product_id===p.id?'selected':''}>${p.nom}</option>`).join('');
+  const row=document.createElement('div');
+  row.className='ing-editor-row';
+  row.innerHTML=`
+    <select class="ing-select" onchange="updateCostPreview()"><option value="">Choisir une MP...</option>${mpOptions}</select>
+    <input type="number" class="ing-qty" value="${ing?.qty||''}" placeholder="Qté" min="0" step="0.01" oninput="updateCostPreview()">
+    <select class="ing-unite">
+      ${['kg','g','L','mL','unité(s)'].map(u=>`<option ${ing?.unite===u?'selected':''}>${u}</option>`).join('')}
+    </select>
+    <button class="ing-remove" onclick="this.parentElement.remove();updateCostPreview()">×</button>`;
+  document.getElementById('ing-editor').appendChild(row);
+  updateCostPreview();
+}
+
+function getIngredientRows(){
+  return Array.from(document.querySelectorAll('.ing-editor-row')).map(row=>({
+    product_id:parseInt(row.querySelector('.ing-select').value)||null,
+    qty:parseFloat(row.querySelector('.ing-qty').value)||0,
+    unite:row.querySelector('.ing-unite').value,
+  })).filter(i=>i.product_id&&i.qty>0);
+}
+
+function updateCostPreview(){
+  const cat=document.getElementById('f-cat').value;
+  if(cat!=='Produits finis'){return;}
+  const ings=getIngredientRows();
+  const produces=parseFloat(document.getElementById('f-rec-qty').value)||1;
+  let total=0;
+  ings.forEach(ing=>{
+    const mp=products.find(p=>p.id===ing.product_id);
+    if(mp)total+=ing.qty*(mp.achat||0);
+  });
+  const cost=produces>0?total/produces:0;
+  document.getElementById('rcp-val').textContent=cost?fmt(cost):'— €';
+}
+
+function saveProduct(){
+  const nom=document.getElementById('f-nom').value.trim();
+  const cat=document.getElementById('f-cat').value;
+  if(!nom||!cat){alert('Veuillez remplir le nom et la catégorie.');return;}
+  const isFinished=cat==='Produits finis';
+  const ings=isFinished?getIngredientRows():[];
+  const recette=isFinished?{
+    produit_qty:parseFloat(document.getElementById('f-rec-qty').value)||1,
+    produit_unite:document.getElementById('f-rec-unite').value,
+    ingredients:ings,
+  }:null;
+
+  const data={nom,cat,
+    unite:document.getElementById('f-unite').value,
+    qty:parseFloat(document.getElementById('f-qty').value)||0,
+    min:parseFloat(document.getElementById('f-min').value)||0,
+    max:parseFloat(document.getElementById('f-max').value)||0,
+    achat:isFinished?0:parseFloat(document.getElementById('f-achat').value)||0,
+    vente:parseFloat(document.getElementById('f-vente').value)||0,
+    fournisseur:document.getElementById('f-fournisseur').value.trim(),
+    notes:document.getElementById('f-notes').value.trim(),
+    updated:today(),recette,
+  };
+
+  if(editingId){const idx=products.findIndex(p=>p.id===editingId);products[idx]={...products[idx],...data};}
+  else{products.push({id:nextId++,...data});}
+  saveLocal();closeModal('modal-product');
+  renderDashboard();renderStock();renderRecettes();
+}
+
+function deleteProduct(){
+  if(!confirm('Supprimer ce produit ?'))return;
+  products=products.filter(p=>p.id!==editingId);
+  saveLocal();closeModal('modal-product');
+  renderDashboard();renderStock();renderRecettes();
+}
+
+// ═══════════════════════════════════════
+// MODAL PRODUIRE
+// ═══════════════════════════════════════
+function openProduceModal(id){
+  producingId=id;
+  const p=products.find(x=>x.id===id);
+  document.getElementById('modal-produce-title').textContent=`Produire : ${p.nom}`;
+  document.getElementById('produce-unit').textContent=p.unite;
+
+  // récupérer la quantité depuis le champ de la carte recette si dispo
+  const inputCard=document.getElementById('produce-input-'+id);
+  document.getElementById('produce-qty').value=inputCard?inputCard.value:1;
+
+  updateProduceImpact();
+  openModal('modal-produce');
+}
+
+function updateProduceImpact(){
+  const p=products.find(x=>x.id===producingId);
+  if(!p||!p.recette)return;
+  const qte=parseInt(document.getElementById('produce-qty').value)||1;
+  const rec=p.recette;
+  const cost=computeCost(p)*qte;
+
+  document.getElementById('produce-summary').innerHTML=`
+    <div class="ps-row"><span class="key">Produit</span><span class="val">${p.nom}</span></div>
+    <div class="ps-row"><span class="key">Quantité produite</span><span class="val">${qte} × ${rec.produit_qty} ${rec.produit_unite}</span></div>
+    <div class="ps-row"><span class="key">Coût de revient total</span><span class="val">${fmt(cost)}</span></div>
+    <div class="ps-row"><span class="key">Stock actuel</span><span class="val">${p.qty} ${p.unite}</span></div>
+    <div class="ps-row"><span class="key">Stock après production</span><span class="val ok" style="color:var(--ok)">${p.qty+(qte*rec.produit_qty)} ${p.unite}</span></div>`;
+
+  // Impact sur les MP
+  const rows=rec.ingredients.map(ing=>{
+    const mp=products.find(x=>x.id===ing.product_id);
+    if(!mp)return'';
+    const consomme=ing.qty*qte;
+    const apres=mp.qty-consomme;
+    const cls=apres<0?'danger':apres<=mp.min?'warn':'';
+    return`<div class="impact-row">
+      <span class="ir-name">${mp.nom}</span>
+      <span class="ir-change">− ${consomme} ${ing.unite}</span>
+      <span class="ir-after ${cls}">${apres.toFixed(2)} ${mp.unite} restants${apres<0?' ⚠️ INSUFFISANT':''}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('impact-rows').innerHTML=rows;
+}
+
+function confirmProduce(){
+  const p=products.find(x=>x.id===producingId);
+  if(!p||!p.recette)return;
+  const qte=parseInt(document.getElementById('produce-qty').value)||1;
+  const rec=p.recette;
+
+  // Vérifier si stocks suffisants
+  for(const ing of rec.ingredients){
+    const mp=products.find(x=>x.id===ing.product_id);
+    if(mp&&mp.qty<ing.qty*qte){
+      if(!confirm(`⚠️ Stock insuffisant pour "${mp.nom}" (besoin: ${ing.qty*qte} ${ing.unite}, disponible: ${mp.qty} ${mp.unite}).\nVoulez-vous continuer quand même ?`))return;
+    }
+  }
+
+  // Déduire les MP
+  rec.ingredients.forEach(ing=>{
+    const idx=products.findIndex(x=>x.id===ing.product_id);
+    if(idx>=0){products[idx].qty=Math.max(0,+(products[idx].qty-(ing.qty*qte)).toFixed(4));products[idx].updated=today();}
+  });
+
+  // Ajouter au produit fini
+  const pIdx=products.findIndex(x=>x.id===producingId);
+  products[pIdx].qty=+(products[pIdx].qty+(qte*rec.produit_qty)).toFixed(4);
+  products[pIdx].updated=today();
+
+  saveLocal();closeModal('modal-produce');
+  renderDashboard();renderStock();renderRecettes();
+  alert(`✅ Production enregistrée !\n${qte} × ${rec.produit_qty} ${rec.produit_unite} de "${p.nom}" ajoutés au stock.`);
+}
+
+// ═══════════════════════════════════════
+// MODAL UTILS
+// ═══════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function closeModalOutside(e,id){if(e.target.id===id)closeModal(id)}
+
+// ═══════════════════════════════════════
+// SYNC GOOGLE SHEETS
+// ═══════════════════════════════════════
+function setSyncStatus(state,label){
+  document.getElementById('sync-dot').className='sync-dot'+(state!=='ok'?' '+state:'');
+  document.getElementById('sync-label').textContent=label;
+}
+async function syncData(){
+  if(!APPS_SCRIPT_URL){setSyncStatus('error','Sheet non configuré');return;}
+  setSyncStatus('loading','Synchronisation...');
+  try{
+    const res=await fetch(APPS_SCRIPT_URL+'?action=get');
+    const data=await res.json();
+    if(data&&data.products){products=data.products;saveLocal();renderDashboard();renderStock();renderRecettes();setSyncStatus('ok','Synchronisé');}
+  }catch(e){setSyncStatus('error','Erreur de connexion');}
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.getElementById('sheet-url-input').value=APPS_SCRIPT_URL;
+renderDashboard();
+</script>
+</body>
+</html>
